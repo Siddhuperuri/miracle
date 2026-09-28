@@ -1,12 +1,6 @@
 /* ------------------------------------------------------------------
    chamber.js  -  the lower strata of the well.
 
-   THE MEMORY. Below the archive the visitor's own past is laid down as rings around the shaft. This visit's
-   path is the first: the line your pointer has made so far, wrapped round the wall in ember. Under it, one ring for
-   every earlier visit, with the line that visit made if any of it is still remembered (jittered, broken where the
-   memory failed, older ones fainter). A ring with no line is a visit of which only the fact is kept. Nothing on
-   any of them says what the person was.
-
    THE DNA. At the bottom, below you, five sheets of light lie at five depths, each a different rendering of one figure:
    the signature (dna.js). Move and they slide apart. Stand exactly at the axis and hold still and they add up.
    It is Module 1's vantage again, and what they add up to is not the name but the figure that everything you
@@ -20,61 +14,10 @@
    ------------------------------------------------------------------ */
 (function () {
   'use strict';
-  var SID = window.SID, M = SID.M, G = SID.Glyphs, SP = SID.Sprites, Deep = SID.Deep, Edge = SID.Edge, Visit = SID.Visit, Trace = SID.Trace, DNA = SID.DNA;
-  var cam = SID.cam, CEN = SID.Cam.CENTER, sm = M.smooth, clamp = M.clamp, TAU = M.TAU;
+  var SID = window.SID, M = SID.M, G = SID.Glyphs, SP = SID.Sprites, Deep = SID.Deep, Edge = SID.Edge, DNA = SID.DNA;
+  var CEN = SID.Cam.CENTER, sm = M.smooth, clamp = M.clamp, TAU = M.TAU;
 
   var LEN = Deep.LEN, az0 = 0, ready = false;
-
-  /* ---------------- memory ---------------- */
-  var MEM_D0 = 206, MEM_DS = 4.4, MEM_R = 9.2;
-  var rings = [], curOut = null, curAt = -9;
-  function buildMemory() {
-    rings.length = 0;
-    /* k = 0 is this visit; then the last visit (its path is mem.tr), and the ones before it (mem.pp, oldest first) */
-    var past = [];
-    if (Visit.mem.tr.length > 3) past.push(Visit.mem.tr.map(function (q) { return { x: q.x - 0.5, y: q.y - 0.5, w: q.w * 14, gap: q.gap }; }));
-    for (var i = Visit.mem.pp.length - 1; i >= 0; i--) past.push(Visit.mem.pp[i].map(function (q) { return { x: q.x - 0.5, y: q.y - 0.5, w: q.w * 14, gap: q.gap }; }));
-    var priors = Math.min(8, Visit.mem.vl.length);
-    var n = 1 + Math.max(priors, past.length);
-    for (var k = 0; k < Math.min(n, 9); k++) rings.push({ k: k, D: MEM_D0 + k * MEM_DS, path: k === 0 ? null : (past[k - 1] || null), a: 0, th: (k * 1.37) % TAU });
-  }
-  function ringPath(rg) {
-    if (rg.k === 0) {
-      if (SID.Trace.count < 6) return null;
-      var now = performance.now();
-      if (now - curAt > 700) {                                    /* (this visit's line is redrawn from what has been kept, a few times a second, not every frame) */
-        curAt = now; var cp = Trace.scribble(90);
-        curOut = null;
-        if (cp) { curOut = []; for (var i = 0; i < cp.n; i++) curOut.push({ x: cp.x[i], y: cp.y[i], w: cp.w[i], gap: false }); }
-      }
-      return curOut;
-    }
-    return rg.path;
-  }
-  function emitMemory(o) {
-    var D = Deep.D, fade = sm(MEM_D0 - 26, MEM_D0 - 4, D) * (1 - sm(LEN - 16, LEN - 2, D));
-    if (fade < 0.01) return;
-    for (var r = 0; r < rings.length; r++) {
-      var rg = rings[r], y = CEN[1] - rg.D, dist = Math.abs(cam.y - y);
-      var age = r === 0 ? 1 : Math.pow(0.78, r), a = fade * age * Math.exp(-dist / 22);
-      if (a < 0.006) continue;
-      SP.ring(CEN[0], y, CEN[2], 1, 0, 0, 0, 0, 1, MEM_R, 120, 0.14 * a, 0, 0);                     /* the stratum */
-      for (var tk = 0; tk < 24; tk++) {                                                                /* and its survey ticks */
-        var ta = az0 + tk * TAU / 24, sn = Math.sin(ta), cs = -Math.cos(ta);
-        SP.seg(CEN[0] + sn * MEM_R, y - 0.16, CEN[2] + cs * MEM_R, CEN[0] + sn * MEM_R, y + 0.16, CEN[2] + cs * MEM_R, 0.2 * a, 0, 0);
-      }
-      var path = ringPath(rg);
-      if (!path) continue;
-      /* the path, wrapped: x round the wall, y up and down it. Older ones are fainter and lower in the memory. */
-      var a0 = az0 + Math.PI + rg.th * 0.05, px = 0, py = 0, pz = 0, have = false;
-      for (var i = 0; i < path.length; i++) {
-        var q = path[i], ang = a0 + q.x * 2.5, yy = y - q.y * 5.2, x = CEN[0] + Math.sin(ang) * MEM_R, z = CEN[2] - Math.cos(ang) * MEM_R;
-        if (have && !q.gap) SP.seg(px, py, pz, x, yy, z, 0.62 * a, 0, 1);
-        if (q.w > 12 && i % 3 === 0) SP.ring(x, yy, z, Math.cos(ang), 0, Math.sin(ang), 0, 1, 0, 0.16 + 0.05 * Math.sqrt(q.w), 10, 0.5 * a, 0, 1);       /* where the hand stayed */
-        px = x; py = yy; pz = z; have = true;
-      }
-    }
-  }
 
   /* ---------------- the DNA: five sheets, one figure ---------------- */
   var DNA_H = 15, DNA_R = 9.6, DNA_DS = 1.15;
@@ -226,12 +169,12 @@
 
   function update(o) {
     if (!ready) {
-      az0 = Edge.az3; buildMemory(); buildMask(); ready = true;
+      az0 = Edge.az3; buildMask(); ready = true;
     }
   }
   function emit(o) {
     if (!ready) return;
-    emitMemory(o); emitDNA(o); emitShadow(o);
+    emitDNA(o); emitShadow(o);
   }
 
   SID.Chamber = { update: update, emit: emit, get ready() { return ready; }, get lit() { return LIT; }, get litAll() { return litAll; } };
