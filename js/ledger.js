@@ -122,14 +122,16 @@
       if (rg.on > 0.45) { rg.hold += dt; if (rg.hold > 1.6 && !rg.seen) { rg.seen = true; Visit.rec.tl = (Visit.rec.tl | 0) | (1 << rg.i); DNA.express('ideas', 0.02); } }
       else rg.hold = Math.max(0, rg.hold - dt * 0.3);
     }
-    /* the top: up there, looking up, and still */
-    var up = st.rise > 0.7 && st.pitch > 0.75 && o.en.stillT > 0.5;
-    colo.on = M.damp(colo.on, up ? 1 : 0, up ? 1.4 : 0.8, dt);
+    /* the top: readable at a soft baseline for as long as you have risen into the room (through the whole
+       scroll up, not only once you arrive), and brought to full light when you look up there and hold still */
+    var upFull = st.rise > 0.7 && st.pitch > 0.75 && o.en.stillT > 0.5;
+    var upTarget = upFull ? 1 : (st.rise > 0.2 ? 0.55 : 0);
+    colo.on = M.damp(colo.on, upTarget, upFull ? 1.4 : 0.8, dt);
     if (colo.on > 0.6) { colo.hold += dt; if (colo.hold > 2 && !colo.seen) { colo.seen = true; Visit.rec.tl = (Visit.rec.tl | 0) | (1 << 20); SID.announce('At the top of the room, a line: made of HTML, CSS and JavaScript, and nothing else.'); } }
     else colo.hold = Math.max(0, colo.hold - dt * 0.3);
   }
   /* text bent round the ring, letter by letter, centred on an azimuth */
-  function ringTextCurve(str, angC, y, h, a) {
+  function ringTextCurve(str, angC, y, h, a, wc, col) {
     var w = 0, i, gd, x, sn, cs, tx, tz, bx, bz, k, j, p;
     for (i = 0; i < str.length; i++) { gd = G.defs[str[i]] || G.defs[' ']; w += (gd.w + 0.3) * h; }
     x = -w / 2;
@@ -140,7 +142,7 @@
         p = gd.s[k];
         for (j = 1; j < p.length; j++) {
           var a0 = (p[j - 1][0] - gd.w / 2) * h, b0 = p[j - 1][1] * h, a1 = (p[j][0] - gd.w / 2) * h, b1 = p[j][1] * h;
-          SP.seg(bx + tx * a0, y + b0 - h * 0.5, bz + tz * a0, bx + tx * a1, y + b1 - h * 0.5, bz + tz * a1, a, 0, 0);
+          SP.seg(bx + tx * a0, y + b0 - h * 0.5, bz + tz * a0, bx + tx * a1, y + b1 - h * 0.5, bz + tz * a1, a, wc || 0, col || 0);
         }
       }
       x += (gd.w + 0.3) * h;
@@ -177,8 +179,8 @@
        light, and brightest where it is being asked. A resting level that is neither readable nor absent read as
        broken, so the quiet level is kept clearly readable and the lit level clearly brighter than it. */
     var up = sm(0.2, 0.75, rise);
-    var ca = vis * (0.1 * colo.mem + 0.7 * colo.on);
-    if (ca > 0.01) { var cy = CEN[1] - (ROW0 - TOOLS.length * DROW - 0.4) * CELL; SP.ring(CEN[0], cy, CEN[2], 1, 0, 0, 0, 0, 1, R, 120, ca * 0.4, 0, 0); ringTextCurve(COLO, az0, cy, HT, ca); }
+    var ca = vis * (0.3 * colo.mem + 0.85 * colo.on);
+    if (ca > 0.01) { var cy = CEN[1] - (ROW0 - TOOLS.length * DROW - 0.4) * CELL; SP.ring(CEN[0], cy, CEN[2], 1, 0, 0, 0, 0, 1, R, 120, ca * 0.5, 0, 0); ringTextCurve(COLO, az0, cy, HT, ca, 1, 1); }
     for (i = 0; i < rings.length; i++) {
       var rg = rings[i], on = rg.on, base = 0.05 + 0.1 * rg.mem;
       var a = vis * (base + 0.34 * on);
